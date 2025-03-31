@@ -2,6 +2,7 @@ package com.example.java_bank_project.service.impl;
 
 import com.example.java_bank_project.dto.AccountInfo;
 import com.example.java_bank_project.dto.BankResponse;
+import com.example.java_bank_project.dto.EmailDetails;
 import com.example.java_bank_project.dto.UserRequest;
 import com.example.java_bank_project.entity.User;
 import com.example.java_bank_project.repository.UserRepository;
@@ -16,6 +17,9 @@ public class UserServiceImpl implements UserService{
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    EmailService emailService;
 
     @Override
     public BankResponse createAccount(UserRequest userRequest) {
@@ -44,7 +48,13 @@ public class UserServiceImpl implements UserService{
                 .build();
 
         User savedUser = userRepository.save(newUser);
-
+        EmailDetails emailDetails = EmailDetails.builder()
+                .recipient(savedUser.getEmail())
+                .subject("ACCOUNT CREATION")
+                .messageBody("Congralations! Your Account Has been Successfully Created. \n Your Account Details: \n"+
+                   "Account Name: "+savedUser.getFirstName()+" "+savedUser.getLastName()+" "+savedUser.getOtherName())
+                .build();
+        emailService.sendEmailAlert(emailDetails);
         return BankResponse.builder()
                 .responseCode(AccountUtils.ACCOUNT_CREATION_SUCCESS)
                 .responseMessage(AccountUtils.ACCOUNT_CREATION_MESSAGE)
