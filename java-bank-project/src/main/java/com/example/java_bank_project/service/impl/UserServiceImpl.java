@@ -1,9 +1,6 @@
 package com.example.java_bank_project.service.impl;
 
-import com.example.java_bank_project.dto.AccountInfo;
-import com.example.java_bank_project.dto.BankResponse;
-import com.example.java_bank_project.dto.EmailDetails;
-import com.example.java_bank_project.dto.UserRequest;
+import com.example.java_bank_project.dto.*;
 import com.example.java_bank_project.entity.User;
 import com.example.java_bank_project.repository.UserRepository;
 import com.example.java_bank_project.utils.AccountUtils;
@@ -11,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 @Service
 public class UserServiceImpl implements UserService{
@@ -66,4 +64,101 @@ public class UserServiceImpl implements UserService{
                 .build();
 
     }
+
+    @Override
+    public BankResponse balanceEnquiry(EnquiryRequest request) {
+        boolean isAccountExist = userRepository.existsByAccountNumber(request.getAccountNumber());
+        if(!isAccountExist){
+            return BankResponse.builder()
+                    .responseCode(AccountUtils.ACCOUNT_NOT_EXISTS_CODE)
+                    .responseMessage(AccountUtils.ACCOUNT_NOT_EXISTS_MESSAGE)
+                    .accountIfo(null)
+                    .build();
+        }
+        User foundUser = userRepository.findByAccountNumber(request.getAccountNumber());
+        return BankResponse.builder()
+                .responseCode(AccountUtils.ACCOUNT_FOUND_CODE)
+                .responseMessage(AccountUtils.ACCOUNT_FOUND_MESSAGE)
+                .accountIfo(AccountInfo.builder()
+                        .accountBalance(foundUser.getAccountBalance())
+                        .accountNumber(request.getAccountNumber())
+                        .accountName(foundUser.getFirstName()+" "+foundUser.getLastName() + " " + foundUser.getOtherName())
+                        .build())
+                .build();
+    }
+
+    @Override
+    public String nameEnquiry(EnquiryRequest request) {
+        boolean isAccountExist = userRepository.existsByAccountNumber(request.getAccountNumber());
+        if(!isAccountExist){
+            return AccountUtils.ACCOUNT_NOT_EXISTS_MESSAGE;
+        }
+        User foundUser = userRepository.findByAccountNumber(request.getAccountNumber());
+        return foundUser.getFirstName() + " " + foundUser.getLastName() + " " + foundUser.getOtherName();
+    }
+
+    @Override
+    public BankResponse creaditAccount(CreditDebitRequest request) {
+        boolean isAccountExist = userRepository.existsByAccountNumber(request.getAccountNumber());
+        if(!isAccountExist){
+            return BankResponse.builder()
+                    .responseCode(AccountUtils.ACCOUNT_NOT_EXISTS_CODE)
+                    .responseMessage(AccountUtils.ACCOUNT_NOT_EXISTS_MESSAGE)
+                    .accountIfo(null)
+                    .build();
+        }
+
+        User userToCredit = userRepository.findByAccountNumber(request.getAccountNumber());
+        userToCredit.setAccountBalance(userToCredit.getAccountBalance().add(request.getAmount()));
+        userRepository.save(userToCredit);
+
+        return BankResponse.builder()
+                .responseCode(AccountUtils.ACCOUNT_CREDITED_SUCCESS_CODE)
+                .responseMessage(AccountUtils.ACCOUNT_CREDITED_SUCCESS_MESSAGE)
+                .accountIfo(AccountInfo.builder()
+                        .accountName(userToCredit.getFirstName() + " " + userToCredit.getLastName() + " " + userToCredit.getOtherName())
+                        .accountBalance(userToCredit.getAccountBalance())
+                        .accountNumber(request.getAccountNumber())
+                        .build())
+                .build();
+    }
+
+    @Override
+    public BankResponse debitAccount(CreditDebitRequest request) {
+        boolean isAccountExist = userRepository.existsByAccountNumber(request.getAccountNumber());
+        if(!isAccountExist){
+            return BankResponse.builder()
+                    .responseCode(AccountUtils.ACCOUNT_NOT_EXISTS_CODE)
+                    .responseMessage(AccountUtils.ACCOUNT_NOT_EXISTS_MESSAGE)
+                    .accountIfo(null)
+                    .build();
+        }
+
+        User userToDebit = userRepository.findByAccountNumber(request.getAccountNumber());
+        BigInteger availableBalance = userToDebit.getAccountBalance().toBigInteger();
+        BigInteger debitAmount = request.getAmount().toBigInteger();
+        if(availableBalance.intValue() < debitAmount.intValue()){
+            return BankResponse.builder()
+                    .responseCode(AccountUtils.INSUFFICIENT_BALANCE_CODE)
+                    .responseMessage(AccountUtils.INSUFFICIENT_BALANCE_MESSAGE)
+                    .accountIfo(null)
+                    .build();
+        }
+
+        else{
+            userToDebit.setAccountBalance(userToDebit.getAccountBalance().subtract(request.getAmount()));
+            userRepository.save(userToDebit);
+            return BankResponse.builder()
+                    .responseCode(AccountUtils.ACCOUNT_DEBITED_CODE)
+                    .responseMessage(AccountUtils.ACCOUNT_DEBITED_MESSAGE)
+                    .accountIfo(AccountInfo.builder()
+                            .accountNumber(request.getAccountNumber())
+                            .accountName(userToDebit.getFirstName() + " " + userToDebit.getLastName() + " " + userToDebit.getOtherName())
+                            .accountBalance(userToDebit.getAccountBalance())
+                            .build())
+                    .build();
+        }
+    }
+
+
 }
