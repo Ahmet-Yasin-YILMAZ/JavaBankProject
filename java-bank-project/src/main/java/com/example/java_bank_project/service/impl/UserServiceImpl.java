@@ -4,11 +4,15 @@ import com.example.java_bank_project.dto.*;
 import com.example.java_bank_project.entity.User;
 import com.example.java_bank_project.repository.UserRepository;
 import com.example.java_bank_project.utils.AccountUtils;
+import org.aspectj.weaver.Lint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.stylesheets.LinkStyle;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService{
@@ -22,6 +26,32 @@ public class UserServiceImpl implements UserService{
     @Autowired
     TransactionService transactionService;
 
+
+    @Override
+    public List<UserResponse> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return users.stream().map(this::mapToUserResponse).collect(Collectors.toList());
+    }
+
+    // mapToUserResponse metodu: User entity → UserResponse DTO
+    private UserResponse mapToUserResponse(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .name(user.getFirstName())
+                .email(user.getEmail())
+                .accountNumber(user.getAccountNumber())
+                .build();
+    }
+
+    @Override
+    public void deleteUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı: " + id));
+        userRepository.delete(user);
+    }
+
+
+
     @Override
     public BankResponse createAccount(UserRequest userRequest) {
 
@@ -29,7 +59,7 @@ public class UserServiceImpl implements UserService{
             return BankResponse.builder()
                     .responseCode((AccountUtils.ACCOUNT_EXISTS_CODE))
                     .responseMessage(AccountUtils.ACCOUNT_EXISTS_MESSAGE)
-                    .accountIfo(null)
+                    .accountInfo(null)
                     .build();
 
         }
@@ -59,7 +89,7 @@ public class UserServiceImpl implements UserService{
         return BankResponse.builder()
                 .responseCode(AccountUtils.ACCOUNT_CREATION_SUCCESS)
                 .responseMessage(AccountUtils.ACCOUNT_CREATION_MESSAGE)
-                .accountIfo(AccountInfo.builder()
+                .accountInfo(AccountInfo.builder()
                         .accountBalance(savedUser.getAccountBalance())
                         .accountNumber(savedUser.getAccountNumber())
                         .accountName(savedUser.getFirstName() + " "+ savedUser.getLastName()+ " "+savedUser.getOtherName())
@@ -75,14 +105,14 @@ public class UserServiceImpl implements UserService{
             return BankResponse.builder()
                     .responseCode(AccountUtils.ACCOUNT_NOT_EXISTS_CODE)
                     .responseMessage(AccountUtils.ACCOUNT_NOT_EXISTS_MESSAGE)
-                    .accountIfo(null)
+                    .accountInfo(null)
                     .build();
         }
         User foundUser = userRepository.findByAccountNumber(request.getAccountNumber());
         return BankResponse.builder()
                 .responseCode(AccountUtils.ACCOUNT_FOUND_CODE)
                 .responseMessage(AccountUtils.ACCOUNT_FOUND_MESSAGE)
-                .accountIfo(AccountInfo.builder()
+                .accountInfo(AccountInfo.builder()
                         .accountBalance(foundUser.getAccountBalance())
                         .accountNumber(request.getAccountNumber())
                         .accountName(foundUser.getFirstName()+" "+foundUser.getLastName() + " " + foundUser.getOtherName())
@@ -101,13 +131,13 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public BankResponse creaditAccount(CreditDebitRequest request) {
+    public BankResponse creditAccount(CreditDebitRequest request) {
         boolean isAccountExist = userRepository.existsByAccountNumber(request.getAccountNumber());
         if(!isAccountExist){
             return BankResponse.builder()
                     .responseCode(AccountUtils.ACCOUNT_NOT_EXISTS_CODE)
                     .responseMessage(AccountUtils.ACCOUNT_NOT_EXISTS_MESSAGE)
-                    .accountIfo(null)
+                    .accountInfo(null)
                     .build();
         }
 
@@ -126,7 +156,7 @@ public class UserServiceImpl implements UserService{
         return BankResponse.builder()
                 .responseCode(AccountUtils.ACCOUNT_CREDITED_SUCCESS_CODE)
                 .responseMessage(AccountUtils.ACCOUNT_CREDITED_SUCCESS_MESSAGE)
-                .accountIfo(AccountInfo.builder()
+                .accountInfo(AccountInfo.builder()
                         .accountName(userToCredit.getFirstName() + " " + userToCredit.getLastName() + " " + userToCredit.getOtherName())
                         .accountBalance(userToCredit.getAccountBalance())
                         .accountNumber(request.getAccountNumber())
@@ -141,7 +171,7 @@ public class UserServiceImpl implements UserService{
             return BankResponse.builder()
                     .responseCode(AccountUtils.ACCOUNT_NOT_EXISTS_CODE)
                     .responseMessage(AccountUtils.ACCOUNT_NOT_EXISTS_MESSAGE)
-                    .accountIfo(null)
+                    .accountInfo(null)
                     .build();
         }
 
@@ -152,7 +182,7 @@ public class UserServiceImpl implements UserService{
             return BankResponse.builder()
                     .responseCode(AccountUtils.INSUFFICIENT_BALANCE_CODE)
                     .responseMessage(AccountUtils.INSUFFICIENT_BALANCE_MESSAGE)
-                    .accountIfo(null)
+                    .accountInfo(null)
                     .build();
         }
 
@@ -171,7 +201,7 @@ public class UserServiceImpl implements UserService{
             return BankResponse.builder()
                     .responseCode(AccountUtils.ACCOUNT_DEBITED_CODE)
                     .responseMessage(AccountUtils.ACCOUNT_DEBITED_MESSAGE)
-                    .accountIfo(AccountInfo.builder()
+                    .accountInfo(AccountInfo.builder()
                             .accountNumber(request.getAccountNumber())
                             .accountName(userToDebit.getFirstName() + " " + userToDebit.getLastName() + " " + userToDebit.getOtherName())
                             .accountBalance(userToDebit.getAccountBalance())
@@ -187,7 +217,7 @@ public class UserServiceImpl implements UserService{
             return BankResponse.builder()
                     .responseCode(AccountUtils.ACCOUNT_NOT_EXISTS_CODE)
                     .responseMessage(AccountUtils.ACCOUNT_NOT_EXISTS_MESSAGE)
-                    .accountIfo(null)
+                    .accountInfo(null)
                     .build();
         }
 
@@ -196,7 +226,7 @@ public class UserServiceImpl implements UserService{
             return BankResponse.builder()
                     .responseCode(AccountUtils.INSUFFICIENT_BALANCE_CODE)
                     .responseMessage(AccountUtils.INSUFFICIENT_BALANCE_MESSAGE)
-                    .accountIfo(null)
+                    .accountInfo(null)
                     .build();
         }
 
@@ -204,7 +234,6 @@ public class UserServiceImpl implements UserService{
         String sourceUsername = sourceAccountUser.getFirstName()+ " " +sourceAccountUser.getLastName()+" "+sourceAccountUser.getOtherName();
         userRepository.save(sourceAccountUser);
 
-        // Debit e-posta bildirimi
         EmailDetails debitAlert = EmailDetails.builder()
                 .subject("DEBIT ALERT")
                 .recipient(sourceAccountUser.getEmail())
@@ -212,12 +241,10 @@ public class UserServiceImpl implements UserService{
                 .build();
         emailService.sendEmailAlert(debitAlert);
 
-        // ✅ destinationAccountUser önce tanımlanıyor
         User destinationAccountUser = userRepository.findByAccountNumber(request.getDestinationAccountNumber());
         destinationAccountUser.setAccountBalance(destinationAccountUser.getAccountBalance().add(BigDecimal.valueOf(request.getAmount())));
         userRepository.save(destinationAccountUser);
 
-        // Transaction kayıt işlemi
         TransactionDto transactionDto = TransactionDto.builder()
                 .accountNumber(destinationAccountUser.getAccountNumber())
                 .transactionType("CREDIT")
@@ -225,10 +252,9 @@ public class UserServiceImpl implements UserService{
                 .build();
         transactionService.saveTransaction(transactionDto);
 
-        // Credit e-posta bildirimi
         EmailDetails creditAlert = EmailDetails.builder()
                 .subject("CREDIT ALERT")
-                .recipient(destinationAccountUser.getEmail()) // ❗Burada da alıcı doğru olmalı
+                .recipient(destinationAccountUser.getEmail())
                 .messageBody("The sum of " + request.getAmount() + " has been sent to your account from " + sourceUsername + ". Your new balance is " + destinationAccountUser.getAccountBalance())
                 .build();
         emailService.sendEmailAlert(creditAlert);
@@ -236,7 +262,7 @@ public class UserServiceImpl implements UserService{
         return BankResponse.builder()
                 .responseCode(AccountUtils.TRANSFER_SUCCESSFUL_CODE)
                 .responseMessage(AccountUtils.TRANSFER_SUCCESSFUL_MESSAGE)
-                .accountIfo(null)
+                .accountInfo(null)
                 .build();
     }
 
