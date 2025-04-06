@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/user")
@@ -27,6 +29,34 @@ public class UserController {
     @PostMapping
     public BankResponse createAccount(@RequestBody UserRequest userRequest){
         return userService.createAccount((userRequest));
+    }
+
+
+    @Operation(
+            summary = "Get All Users",
+            description = "Returns a list of all users with their account information"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Http Status 200 SUCCESS"
+    )
+    @GetMapping("/all")
+    public List<UserResponse> getAllUsers() {
+        return userService.getAllUsers();
+    }
+
+    @Operation(
+            summary = "Delete User by ID",
+            description = "Deletes a user with the given ID"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Http Status 200 SUCCESS"
+    )
+    @DeleteMapping("/{id}")
+    public String deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return "Kullanıcı başarıyla silindi. ID: " + id;
     }
 
 
