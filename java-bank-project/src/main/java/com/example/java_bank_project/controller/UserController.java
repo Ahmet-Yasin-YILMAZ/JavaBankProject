@@ -80,7 +80,7 @@ public class UserController {
 
     @PostMapping("/credit")
     public BankResponse creditAccount(@RequestBody CreditDebitRequest request){
-        return userService.creaditAccount(request);
+        return userService.creditAccount(request);
     }
 
     @PostMapping("/debit")
